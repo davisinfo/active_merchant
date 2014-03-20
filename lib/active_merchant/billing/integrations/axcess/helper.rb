@@ -55,7 +55,7 @@ module ActiveMerchant #:nodoc:
             
             ret_vals = Hash[*response.split('&').map{|_e| CGI.unescape(_e).split('=',2)}.flatten]  
             
-            raise StandardError.new("Faulty Axcess result: #{response}") unless !ret_vals['FRONTEND.REDIRECT_URL'].scan('http').nil? && ret_vals['POST.VALIDATION'] == 'ACK'
+            raise StandardError.new("Faulty Axcess result: #{response}") unless !ret_vals['FRONTEND.REDIRECT_URL'].try(:scan,'http').nil? && ret_vals['POST.VALIDATION'] == 'ACK'
             
             return ret_vals['FRONTEND.REDIRECT_URL']
           end
