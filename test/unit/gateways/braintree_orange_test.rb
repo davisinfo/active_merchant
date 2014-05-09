@@ -68,10 +68,6 @@ class BraintreeOrangeTest < Test::Unit::TestCase
     assert_equal 'US', result["shipping_country"]
   end
 
-  def test_supported_countries
-    assert_equal ['US'], BraintreeOrangeGateway.supported_countries
-  end
-
   def test_adding_store_adds_vault_id_flag
     result = {}
 
@@ -117,6 +113,14 @@ class BraintreeOrangeTest < Test::Unit::TestCase
 
     response = @gateway.purchase(@amount, @credit_card)
     assert_equal 'N', response.cvv_result['code']
+  end
+
+  def test_add_eci
+    @gateway.expects(:commit).with { |_, _, parameters| !parameters.has_key?(:billing_method) }
+    @gateway.purchase(@amount, @credit_card, {})
+
+    @gateway.expects(:commit).with { |_, _, parameters| parameters[:billing_method] == 'recurring' }
+    @gateway.purchase(@amount, @credit_card, {:eci => 'recurring'})
   end
 
   private

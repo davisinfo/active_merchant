@@ -166,6 +166,8 @@ module ActiveMerchant #:nodoc:
       # :comments               Uh... comments
       #
       def recurring(money, creditcard, options={})
+        deprecated RECURRING_DEPRECATION_MESSAGE
+
         requires!(options, [:periodicity, :bimonthly, :monthly, :biweekly, :weekly, :yearly, :daily], :installments, :order_id )
 
         options.update(
@@ -426,17 +428,6 @@ module ActiveMerchant #:nodoc:
         end unless xml.root.nil?
 
         response
-      end
-
-      # Make a ruby type out of the response string
-      def normalize(field)
-        case field
-        when "true"   then true
-        when "false"  then false
-        when ""       then nil
-        when "null"   then nil
-        else field
-        end
       end
 
       def format_creditcard_expiry_year(year)

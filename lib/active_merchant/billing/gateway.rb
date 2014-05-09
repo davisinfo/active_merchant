@@ -16,10 +16,6 @@ module ActiveMerchant #:nodoc:
     # * <tt>void(identification, options = {})</tt>
     # * <tt>credit(money, identification, options = {})</tt>
     #
-    # Some gateways include features for recurring billing
-    #
-    # * <tt>recurring(money, creditcard, options = {})</tt>
-    #
     # Some gateways also support features for storing credit cards:
     #
     # * <tt>store(creditcard, options = {})</tt>
@@ -62,8 +58,9 @@ module ActiveMerchant #:nodoc:
       include Utils
 
       DEBIT_CARDS = [ :switch, :solo ]
-      CURRENCIES_WITHOUT_FRACTIONS = [ 'JPY', 'HUF' ]
+      CURRENCIES_WITHOUT_FRACTIONS = [ 'BIF', 'BYR', 'CLP', 'CVE', 'DJF', 'GNF', 'HUF', 'ISK', 'JPY', 'KMF', 'KRW', 'PYG', 'RWF', 'TWD', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF' ]
       CREDIT_DEPRECATION_MESSAGE = "Support for using credit to refund existing transactions is deprecated and will be removed from a future release of ActiveMerchant. Please use the refund method instead."
+      RECURRING_DEPRECATION_MESSAGE = "Recurring functionality in ActiveMerchant is deprecated and will be removed in a future version. Please contact the ActiveMerchant maintainers if you have an interest in taking ownership of a separate gem that continues support for it."
 
       cattr_reader :implementations
       @@implementations = []
@@ -81,10 +78,6 @@ module ActiveMerchant #:nodoc:
 
       # The default currency for the transactions if no currency is provided
       class_attribute :default_currency
-
-      # The countries of merchants the gateway supports
-      class_attribute :supported_countries
-      self.supported_countries = []
 
       # The supported card types for the gateway
       class_attribute :supported_cardtypes
@@ -116,6 +109,23 @@ module ActiveMerchant #:nodoc:
         result.to_s.downcase
       end
 
+      def self.supported_countries=(country_codes)
+        country_codes.each do |country_code|
+          unless ActiveMerchant::Country.find(country_code)
+            raise ActiveMerchant::InvalidCountryCodeError, "No country could be found for the country #{country_code}"
+          end
+        end
+        @supported_countries = country_codes.dup
+      end
+
+      def self.supported_countries
+        @supported_countries ||= []
+      end
+
+      def supported_countries
+        self.class.supported_countries
+      end
+
       def card_brand(source)
         self.class.card_brand(source)
       end
@@ -130,7 +140,29 @@ module ActiveMerchant #:nodoc:
 
       # Are we running in test mode?
       def test?
-        (@options[:test] || Base.test?)
+        (@options.has_key?(:test) ? @options[:test] : Base.test?)
+      end
+
+      protected # :nodoc: all
+
+      def normalize(field)
+        case field
+          when "true"   then true
+          when "false"  then false
+          when ""       then nil
+          when "null"   then nil
+          else field
+        end
+      end
+
+      def user_agent
+        @@ua ||= JSON.dump({
+          :bindings_version => ActiveMerchant::VERSION,
+          :lang => 'ruby',
+          :lang_version => "#{RUBY_VERSION} p#{RUBY_PATCHLEVEL} (#{RUBY_RELEASE_DATE})",
+          :platform => RUBY_PLATFORM,
+          :publisher => 'active_merchant'
+        })
       end
 
       private # :nodoc: all
@@ -161,7 +193,18 @@ module ActiveMerchant #:nodoc:
 
       def localized_amount(money, currency)
         amount = amount(money)
-        CURRENCIES_WITHOUT_FRACTIONS.include?(currency.to_s) ? amount.split('.').first : amount
+
+        return amount unless non_fractional_currency?(currency)
+
+        if self.money_format == :cents
+          sprintf("%.0f", amount.to_f / 100)
+        else
+          amount.split('.').first
+        end
+      end
+
+      def non_fractional_currency?(currency)
+        CURRENCIES_WITHOUT_FRACTIONS.include?(currency.to_s)
       end
 
       def currency(money)

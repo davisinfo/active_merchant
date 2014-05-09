@@ -112,6 +112,11 @@ module ActiveMerchant #:nodoc:
       # @return [String] the verification value
       attr_accessor :verification_value
 
+      # Returns or sets the track data for the card
+      #
+      # @return [String]
+      attr_accessor :track_data
+
       def type
         self.class.deprecated "CreditCard#type is deprecated and will be removed from a future release of ActiveMerchant. Please use CreditCard#brand instead."
         brand
@@ -181,7 +186,7 @@ module ActiveMerchant #:nodoc:
       def display_number
         self.class.mask(number)
       end
-      
+
       def first_digits
         self.class.first_digits(number)
       end
@@ -199,8 +204,8 @@ module ActiveMerchant #:nodoc:
         # Bogus card is pretty much for testing purposes. Lets just skip these extra tests if its used
         return if brand == 'bogus'
 
-        validate_card_brand
         validate_card_number
+        validate_card_brand
         validate_verification_value
         validate_switch_or_solo_attributes
       end
@@ -221,21 +226,26 @@ module ActiveMerchant #:nodoc:
         self.brand = self.class.brand?(number) if brand.blank?
       end
 
-      def validate_card_number #:nodoc:
+      def validate_card_number
         if number.blank?
           errors.add :number, "is required"
         elsif !CreditCard.valid_number?(number)
           errors.add :number, "is not a valid credit card number"
         end
-
-        unless errors.on(:number) || errors.on(:brand)
-          errors.add :brand, "is not the correct card brand" unless CreditCard.matching_brand?(number, brand)
-        end
       end
 
-      def validate_card_brand #:nodoc:
-        errors.add :brand, "is required" if brand.blank? && number.present?
-        errors.add :brand, "is invalid"  unless brand.blank? || CreditCard.card_companies.keys.include?(brand)
+      def validate_card_brand
+        if(brand.blank? && !errors.on(:number))
+          errors.add :brand, "is required"
+        end
+
+        if(brand.present? && !CreditCard.card_companies.keys.include?(brand))
+          errors.add :brand, "is invalid"
+        end
+
+        unless(errors.on(:number) || errors.on(:brand))
+          errors.add :brand, "does not match the card number" unless CreditCard.matching_brand?(number, brand)
+        end
       end
 
       alias_method :validate_card_type, :validate_card_brand
@@ -257,9 +267,13 @@ module ActiveMerchant #:nodoc:
       def validate_switch_or_solo_attributes #:nodoc:
         if %w[switch solo].include?(brand)
           unless valid_month?(@start_month) && valid_start_year?(@start_year) || valid_issue_number?(@issue_number)
-            errors.add :start_month,  "is invalid"      unless valid_month?(@start_month)
-            errors.add :start_year,   "is invalid"      unless valid_start_year?(@start_year)
-            errors.add :issue_number, "cannot be empty" unless valid_issue_number?(@issue_number)
+            if @issue_number.blank?
+              errors.add :start_month,  "is invalid"      unless valid_month?(@start_month)
+              errors.add :start_year,   "is invalid"      unless valid_start_year?(@start_year)
+              errors.add :issue_number, "cannot be empty"
+            else
+              errors.add :issue_number, "is invalid"      unless valid_issue_number?(@issue_number)
+            end
           end
         end
       end

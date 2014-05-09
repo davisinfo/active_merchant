@@ -4,7 +4,7 @@ module ActiveMerchant #:nodoc:
       self.live_url = self.test_url = "https://secure.certodirect.com/gateway/process/v2"
 
       self.supported_countries = [
-        "BE", "BG", "CZ", "DK", "DE", "EE", "IE", "EL", "ES", "FR",
+        "BE", "BG", "CZ", "DK", "DE", "EE", "IE", "ES", "FR",
         "IT", "CY", "LV", "LT", "LU", "HU", "MT", "NL", "AT", "PL",
         "PT", "RO", "SI", "SK", "FI", "SE", "GB"
       ]
@@ -101,9 +101,10 @@ module ActiveMerchant #:nodoc:
       # ==== Options
       #
       def recurring(identification, options={})
+        deprecated RECURRING_DEPRECATION_MESSAGE
+
         commit(build_recurring_request(identification, options))
       end
-
 
       private
 

@@ -93,11 +93,15 @@ module ActiveMerchant #:nodoc:
       # * <tt>:login</tt> -- The Authorize.Net API Login ID (REQUIRED)
       # * <tt>:password</tt> -- The Authorize.Net Transaction Key. (REQUIRED)
       # * <tt>:test</tt> -- +true+ or +false+. If true, perform transactions against the test server.
-      # * <tt>:delimiter</tt> -- The delimiter used in the direct response.  Default is ',' (comma).
       #   Otherwise, perform transactions against the production server.
+      # * <tt>:test_requests</tt> -- +true+ or +false+. If true, perform transactions without the
+      #   test flag. This is useful when you need to generate card declines, AVS or CVV errors.
+      #   Will hold the same value as :test by default.
+      # * <tt>:delimiter</tt> -- The delimiter used in the direct response.  Default is ',' (comma).
       def initialize(options = {})
         requires!(options, :login, :password)
         super
+        @options[:test_requests] = test? if @options[:test_requests].nil?
       end
 
       # Creates a new customer profile along with any customer payment profiles and customer shipping addresses
@@ -336,9 +340,10 @@ module ActiveMerchant #:nodoc:
       # ==== Transaction
       #
       # * <tt>:type</tt> -- The type of transaction. Can be either <tt>:auth_only</tt>, <tt>:capture_only</tt>, <tt>:auth_capture</tt>, <tt>:prior_auth_capture</tt>, <tt>:refund</tt> or <tt>:void</tt>. (REQUIRED)
-      # * <tt>:amount</tt> -- The amount for the tranaction. Formatted with a decimal. For example "4.95" (CONDITIONAL)
+      # * <tt>:amount</tt> -- The amount for the transaction. Formatted with a decimal. For example "4.95" (CONDITIONAL)
       #     - :type == :void (NOT USED)
-      #     - :type == (:refund, :auth_only, :capture_only, :auth_capture, :prior_auth_capture) (REQUIRED)
+      #     - :type == :refund (OPTIONAL)
+      #     - :type == (:auth_only, :capture_only, :auth_capture, :prior_auth_capture) (REQUIRED)
       #
       # * <tt>:customer_profile_id</tt> -- The Customer Profile ID of the customer to use in this transaction. (CONDITIONAL)
       #     - :type == (:void, :prior_auth_capture) (OPTIONAL)
@@ -358,14 +363,18 @@ module ActiveMerchant #:nodoc:
       #     - :type = (:void, :refund, :prior_auth_capture) (NOT USED)
       #     - :type = (:auth_only, :capture_only, :auth_capture) (OPTIONAL)
       #
+      # * <tt>:recurring_billing</tt> -- The recurring billing status (OPTIONAL)
+      #     - :type = (:void, :refund, :prior_auth_capture) (NOT USED)
+      #     - :type = (:auth_only, :capture_only, :auth_capture) (OPTIONAL)
+      #
       # * <tt>:customer_shipping_address_id</tt> -- Payment gateway assigned ID associated with the customer shipping address (CONDITIONAL)
       #     - :type = (:void, :refund) (OPTIONAL)
       #     - :type = (:auth_only, :capture_only, :auth_capture) (NOT USED)
       #     - :type = (:prior_auth_capture) (OPTIONAL)
       #
       # ==== For :type == :refund only
-      # * <tt>:credit_card_number_masked</tt> -- (CONDITIONAL - requied for credit card refunds is :customer_profile_id AND :customer_payment_profile_id are missing)
-      # * <tt>:bank_routing_number_masked && :bank_account_number_masked</tt> -- (CONDITIONAL - requied for electronic check refunds is :customer_profile_id AND :customer_payment_profile_id are missing) (NOT ABLE TO TEST - I keep getting "ACH transactions are not accepted by this merchant." when trying to make a payment and, until that's possible I can't refund (wiseleyb@gmail.com))
+      # * <tt>:credit_card_number_masked</tt> -- (CONDITIONAL - required for credit card refunds if :customer_profile_id AND :customer_payment_profile_id are missing)
+      # * <tt>:bank_routing_number_masked && :bank_account_number_masked</tt> -- (CONDITIONAL - required for electronic check refunds if :customer_profile_id AND :customer_payment_profile_id are missing) (NOT ABLE TO TEST - I keep getting "ACH transactions are not accepted by this merchant." when trying to make a payment and, until that's possible I can't refund (wiseleyb@gmail.com))
       def create_customer_profile_transaction(options)
         requires!(options, :transaction)
         requires!(options[:transaction], :type)
@@ -405,13 +414,13 @@ module ActiveMerchant #:nodoc:
       # * <tt>:customer_profile_id</tt> -- The Customer Profile ID of the customer to use in this transaction. (CONDITIONAL :customer_payment_profile_id must be included if used)
       # * <tt>:customer_payment_profile_id</tt> -- The Customer Payment Profile ID of the Customer Payment Profile to use in this transaction. (CONDITIONAL :customer_profile_id must be included if used)
       #
-      # * <tt>:credit_card_number_masked</tt> -- Four Xs follwed by the last four digits of the credit card (CONDITIONAL - used if customer_profile_id and customer_payment_profile_id aren't given)
+      # * <tt>:credit_card_number_masked</tt> -- Four Xs followed by the last four digits of the credit card (CONDITIONAL - used if customer_profile_id and customer_payment_profile_id aren't given)
       #
-      # * <tt>:bank_routing_number_masked</tt> -- The last four gidits of the routing number to be refunded (CONDITIONAL - must be used with :bank_account_number_masked)
-      # * <tt>:bank_account_number_masked</tt> -- The last four digis of the bank account number to be refunded, Ex. XXXX1234 (CONDITIONAL - must be used with :bank_routing_number_masked)
+      # * <tt>:bank_routing_number_masked</tt> -- The last four digits of the routing number to be refunded (CONDITIONAL - must be used with :bank_account_number_masked)
+      # * <tt>:bank_account_number_masked</tt> -- The last four digits of the bank account number to be refunded, Ex. XXXX1234 (CONDITIONAL - must be used with :bank_routing_number_masked)
       #
       # * <tt>:tax</tt> - A hash containing tax information for the refund (OPTIONAL - <tt>:amount</tt>, <tt>:name</tt> (31 characters), <tt>:description</tt> (255 characters))
-      # * <tt>:duty</tt> - A hash containting duty information for the refund (OPTIONAL - <tt>:amount</tt>, <tt>:name</tt> (31 characters), <tt>:description</tt> (255 characters))
+      # * <tt>:duty</tt> - A hash containing duty information for the refund (OPTIONAL - <tt>:amount</tt>, <tt>:name</tt> (31 characters), <tt>:description</tt> (255 characters))
       # * <tt>:shipping</tt> - A hash containing shipping information for the refund (OPTIONAL - <tt>:amount</tt>, <tt>:name</tt> (31 characters), <tt>:description</tt> (255 characters))
       def create_customer_profile_transaction_for_refund(options)
         requires!(options, :transaction)
@@ -468,7 +477,11 @@ module ActiveMerchant #:nodoc:
       private
 
       def expdate(credit_card)
-        sprintf('%04d-%02d', credit_card.year, credit_card.month)
+        if credit_card.year.present? && credit_card.month.present?
+          sprintf('%04d-%02d', credit_card.year, credit_card.month)
+        else
+          'XXXX'
+        end
       end
 
       def build_request(action, options = {})
@@ -599,8 +612,11 @@ module ActiveMerchant #:nodoc:
       end
 
       def build_create_customer_profile_transaction_request(xml, options)
+        options[:extra_options] ||= {}
+        options[:extra_options].merge!('x_test_request' => 'TRUE') if @options[:test_requests]
+
         add_transaction(xml, options[:transaction])
-        xml.tag!('extraOptions', "x_test_request=TRUE") if @options[:test]
+        tag_unless_blank(xml, 'extraOptions', format_extra_options(options[:extra_options]))
 
         xml.target!
       end
@@ -652,7 +668,7 @@ module ActiveMerchant #:nodoc:
                 tag_unless_blank(xml,'customerShippingAddressId', transaction[:customer_shipping_address_id])
                 xml.tag!('transId', transaction[:trans_id])
               when :refund
-                #TODO - add lineItems and extraOptions fields
+                #TODO - add lineItems field
                 xml.tag!('amount', transaction[:amount])
                 tag_unless_blank(xml, 'customerProfileId', transaction[:customer_profile_id])
                 tag_unless_blank(xml, 'customerPaymentProfileId', transaction[:customer_payment_profile_id])
@@ -660,20 +676,26 @@ module ActiveMerchant #:nodoc:
                 tag_unless_blank(xml, 'creditCardNumberMasked', transaction[:credit_card_number_masked])
                 tag_unless_blank(xml, 'bankRoutingNumberMasked', transaction[:bank_routing_number_masked])
                 tag_unless_blank(xml, 'bankAccountNumberMasked', transaction[:bank_account_number_masked])
+                add_order(xml, transaction[:order]) if transaction[:order].present?
                 xml.tag!('transId', transaction[:trans_id])
                 add_tax(xml, transaction[:tax]) if transaction[:tax]
                 add_duty(xml, transaction[:duty]) if transaction[:duty]
                 add_shipping(xml, transaction[:shipping]) if transaction[:shipping]
               when :prior_auth_capture
                 xml.tag!('amount', transaction[:amount])
+                add_order(xml, transaction[:order]) if transaction[:order].present?
                 xml.tag!('transId', transaction[:trans_id])
               else
                 xml.tag!('amount', transaction[:amount])
                 xml.tag!('customerProfileId', transaction[:customer_profile_id])
                 xml.tag!('customerPaymentProfileId', transaction[:customer_payment_profile_id])
                 xml.tag!('approvalCode', transaction[:approval_code]) if transaction[:type] == :capture_only
+                add_order(xml, transaction[:order]) if transaction[:order].present?
+
             end
-            add_order(xml, transaction[:order]) if transaction[:order].present?
+            if [:auth_capture, :auth_only, :capture_only].include?(transaction[:type])
+              xml.tag!('recurringBilling', transaction[:recurring_billing]) if transaction.has_key?(:recurring_billing)
+            end
             unless [:void,:refund,:prior_auth_capture].include?(transaction[:type])
               tag_unless_blank(xml, 'cardCode', transaction[:card_code])
             end
@@ -834,7 +856,7 @@ module ActiveMerchant #:nodoc:
         response_params = parse(action, xml)
 
         message = response_params['messages']['message']['text']
-        test_mode = test? || message =~ /Test Mode/
+        test_mode = @options[:test_requests] || message =~ /Test Mode/
         success = response_params['messages']['result_code'] == 'Ok'
         response_params['direct_response'] = parse_direct_response(response_params['direct_response']) if response_params['direct_response']
         transaction_id = response_params['direct_response']['transaction_id'] if response_params['direct_response']
@@ -847,6 +869,10 @@ module ActiveMerchant #:nodoc:
 
       def tag_unless_blank(xml, tag_name, data)
         xml.tag!(tag_name, data) unless data.blank? || data.nil?
+      end
+
+      def format_extra_options(options)
+        options.map{ |k, v| "#{k}=#{v}" }.join('&') unless options.nil?
       end
 
       def parse_direct_response(params)

@@ -111,7 +111,7 @@ module ActiveMerchant #:nodoc:
         }.merge(options)
       end
 
-      # Splits an +authorization+ param and retrives the order id and
+      # Splits an +authorization+ param and retrieves the order id and
       # transaction number in that order.
       def split_authorization(authorization)
         if authorization.nil? || authorization.empty? || authorization !~ /;/
@@ -176,16 +176,6 @@ module ActiveMerchant #:nodoc:
       def message_from(message)
         return 'Unspecified error' if message.blank?
         message.gsub(/[^\w]/, ' ').split.join(" ").capitalize
-      end
-
-      # Make a Ruby type out of the response string
-      def normalize(field)
-        case field
-          when "true"     then true
-          when "false"    then false
-          when '', "null" then nil
-          else field
-        end
       end
 
       def actions
