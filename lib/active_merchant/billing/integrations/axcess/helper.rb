@@ -36,11 +36,11 @@ module ActiveMerchant #:nodoc:
             add_field('TRANSACTION.MODE',(test?)?'INTEGRATOR_TEST':'LIVE')
             add_field('REQUEST.VERSION','1.0')
             add_field('FRONTEND.ENABLED','true')
-            add_field('FRONTEND.POPUP','true')
+            add_field('FRONTEND.POPUP','false')
             add_field('FRONTEND.MODE','DEFAULT')
             add_field('FRONTEND.LANGUAGE','en')
             add_field('PAYMENT.CODE','CC.DB')
-            
+
             @fields['FRONTEND.RESPONSE_URL'] ||= @fields.delete('notify_url')
             
             _url = (test?)?"#{Axcess.test_url}":"#{Axcess.service_url}"
