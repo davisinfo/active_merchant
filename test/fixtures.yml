@@ -20,6 +20,13 @@ authorize_net:
   password: Y
 
 # Working credentials, no need to replace
+axcess:
+  login: LOGIN
+  password: PASSWORD
+  sender: SENDER
+  channel: CHANNEL
+
+# Working credentials, no need to replace
 balanced:
   login: 'e1c5ad38d1c711e1b36c026ba7e239a9'
 
