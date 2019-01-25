@@ -277,6 +277,7 @@ module ActiveMerchant #:nodoc:
         post['customParameters[SHOPPER_pluginId]'] = 'activemerchant'
         post['customParameters[custom_disable3DSecure]'] = options[:disable_3d_secure] if options[:disable_3d_secure]
         post['shopperResultUrl'] = @options[:shopper_result_url] if @options[:shopper_result_url]
+        post['notificationUrl'] = @options[:notification_url] if @options[:notification_url]
       end
 
       def build_url(url, authorization, options)
